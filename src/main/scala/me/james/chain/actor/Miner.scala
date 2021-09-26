@@ -1,8 +1,9 @@
 package me.james.chain.actor
 
-import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
+import akka.actor.typed.{ActorRef, Behavior, SupervisorStrategy}
 import akka.pattern.StatusReply
+import me.james.chain.actor.Miner.{beginMining, validate}
 import me.james.chain.utils.{Loggable, PoWUtil}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -16,13 +17,6 @@ object Miner extends Loggable {
   sealed trait MinerState
   case object Idle                                                              extends MinerState
   case object Mining                                                            extends MinerState
-
-  private def ready: Behavior[Miner.Command] = Behaviors.receiveMessage {
-    case Mine(hash, proof, replyTo) =>
-      validate(hash, proof).pipe(beginMining).pipe(replyTo ! _)
-      Behaviors.same
-    case _                          => Behaviors.unhandled
-  }
 
   def validate(hash: String, proof: Long): (Boolean, String) = {
     val isValid = PoWUtil.validProof(hash, proof)
@@ -40,11 +34,25 @@ object Miner extends Loggable {
       val eventualLong = Future {
         PoWUtil.pow(hash)
       }
-      val calculated   = Await.result(eventualLong, Duration.Inf)
-      StatusReply.success(calculated)
+      StatusReply.success(Await.result(eventualLong, Duration.Inf))
     } else {
       StatusReply.Error("Cancel Mining")
     }
   }
 
+}
+class Miner(context: ActorContext[Miner.Command]) extends AbstractBehavior[Miner.Command](context) {
+  override def onMessage(msg: Miner.Command): Behavior[Miner.Command] = msg match {
+    case Miner.Mine(hash, proof, replyTo) =>
+      validate(hash, proof).pipe(beginMining).pipe(replyTo ! _)
+      Behaviors.same
+    case _                                =>
+      Behaviors.unhandled
+  }
+
+  def apply(context: ActorContext[Miner.Command]): Behavior[Miner.Command] = Behaviors
+    .supervise(
+      new Miner(context)
+    )
+    .onFailure(SupervisorStrategy.restart)
 }

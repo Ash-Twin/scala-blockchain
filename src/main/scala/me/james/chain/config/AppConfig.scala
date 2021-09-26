@@ -1,3 +1,6 @@
 package me.james.chain.config
 
-case class AppConfig ()
+case class AppConfig(
+    host: String,
+    port: Int
+)
