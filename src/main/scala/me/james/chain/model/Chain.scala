@@ -33,7 +33,7 @@ case class ChainLink(
     proof: Long,
     values: List[Transaction],
     previousHash: String = "",
-    tail: Chain,
+    tail: Chain = EmptyChain,
     timestamp: LocalDateTime = LocalDateTime.now()
 ) extends Chain {
   override val hash: String = CryptoUtil.sha256Hash(this.asJson.noSpaces)

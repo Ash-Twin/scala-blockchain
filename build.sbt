@@ -8,7 +8,9 @@ val circeVersion      = "0.14.1"
 val pureConfigVersion = "0.16.0"
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor-typed"         % AkkaVersion,
-  "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaVersion % Test
+  "com.typesafe.akka" %% "akka-persistence-typed"   % AkkaVersion,
+  "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaVersion % Test,
+  "com.typesafe.akka" %% "akka-persistence-testkit" % AkkaVersion % Test
 )
 libraryDependencies ++= Seq("com.github.pureconfig" %% "pureconfig", "com.github.pureconfig" %% "pureconfig-akka")
   .map(_ % pureConfigVersion)

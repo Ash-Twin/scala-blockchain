@@ -2,5 +2,6 @@ package me.james.chain.config
 
 case class AppConfig(
     host: String,
-    port: Int
+    port: Int,
+    persistenceId:String
 )
