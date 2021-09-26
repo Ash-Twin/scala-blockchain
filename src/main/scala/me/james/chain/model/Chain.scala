@@ -18,7 +18,8 @@ sealed trait Chain {
     case _                                        => throw new InvalidParameterException("Cannot add to an invalid link")
   }
 }
-object Chain       {
+
+object Chain {
   def apply[T](b: Chain*): Chain =
     if (b.isEmpty) EmptyChain
     else {
