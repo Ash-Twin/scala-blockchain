@@ -14,9 +14,6 @@ import scala.util.chaining._
 object Miner extends Loggable {
   sealed trait Command
   case class Mine(hash: String, proof: Long, replyTo: ActorRef[StatusReply[_]]) extends Command
-  sealed trait MinerState
-  case object Idle                                                              extends MinerState
-  case object Mining                                                            extends MinerState
 
   def validate(hash: String, proof: Long): (Boolean, String) = {
     val isValid = PoWUtil.validProof(hash, proof)
@@ -39,20 +36,21 @@ object Miner extends Loggable {
       StatusReply.Error("Cancel Mining")
     }
   }
+  def apply(): Behavior[Miner.Command] = Behaviors
+    .supervise(Behaviors.setup[Command] { ctx =>
+      new Miner(ctx)
+    })
+    .onFailure(SupervisorStrategy.restart)
 
 }
 class Miner(context: ActorContext[Miner.Command]) extends AbstractBehavior[Miner.Command](context) {
   override def onMessage(msg: Miner.Command): Behavior[Miner.Command] = msg match {
     case Miner.Mine(hash, proof, replyTo) =>
       validate(hash, proof).pipe(beginMining).pipe(replyTo ! _)
+
       Behaviors.same
     case _                                =>
       Behaviors.unhandled
   }
 
-  def apply(context: ActorContext[Miner.Command]): Behavior[Miner.Command] = Behaviors
-    .supervise(
-      new Miner(context)
-    )
-    .onFailure(SupervisorStrategy.restart)
 }

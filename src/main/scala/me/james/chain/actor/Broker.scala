@@ -13,6 +13,11 @@ object Broker {
   case class AddTransaction(transaction: Transaction, replyTo: ActorRef[StatusReply[Done]]) extends Command
   case class GetTransactions(replyTo: ActorRef[StatusReply[List[Transaction]]])             extends Command
   case class Clear(replyTo: ActorRef[StatusReply[Int]])                                     extends Command
+  def apply(): Behavior[Broker.Command] = Behaviors
+    .supervise(Behaviors.setup[Command] { ctx =>
+      new Broker(ctx)
+    })
+    .onFailure(SupervisorStrategy.restart)
 }
 class Broker(context: ActorContext[Broker.Command]) extends AbstractBehavior[Broker.Command](context) {
 
@@ -35,9 +40,4 @@ class Broker(context: ActorContext[Broker.Command]) extends AbstractBehavior[Bro
       Behaviors.unhandled
   }
 
-  def apply(context: ActorContext[Broker.Command]): Behavior[Broker.Command] = Behaviors
-    .supervise(
-      new Broker(context)
-    )
-    .onFailure(SupervisorStrategy.restart)
 }
