@@ -7,13 +7,13 @@ import akka.actor.typed.{ActorRef, ActorSystem, Behavior, SupervisorStrategy}
 import akka.pattern.StatusReply
 import akka.util.Timeout
 import me.james.chain.model.Transaction
-import me.james.chain.utils.PoWUtil
+import me.james.chain.utils.{Loggable, PoWUtil}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success}
 
-object Node {
+object Node       {
   def apply(
       blockchain: ActorRef[Blockchain.Command[_]],
       miner: ActorRef[Miner.Command],
@@ -28,28 +28,29 @@ object Node {
 
   case class AddTransaction(transaction: Transaction, replyTo: ActorRef[StatusReply[Done]]) extends Command
 
-  case class CheckPowSolution(solution: Long, replyTo: ActorRef[StatusReply[_]])            extends Command
+  case class CheckPowSolution(solution: Long, replyTo: ActorRef[StatusReply[_]]) extends Command
 
-  case class AddBlock(proof: Long, replyTo: ActorRef[StatusReply[_]])                       extends Command
+  case class AddBlock(proof: Long, replyTo: ActorRef[StatusReply[_]]) extends Command
 
-  case class GetTransactions(replyTo: ActorRef[StatusReply[List[Transaction]]])             extends Command
+  case class GetTransactions(replyTo: ActorRef[StatusReply[List[Transaction]]]) extends Command
 
-  case class Mine(solution: Long, replyTo: ActorRef[StatusReply[_]])                        extends Command
+  case object StartMining extends Command
 
-  case class StopMining(replyTo: ActorRef[StatusReply[_]])                                  extends Command
+  case class StopMining(replyTo: ActorRef[StatusReply[_]]) extends Command
 
-  case class GetStatus(replyTo: ActorRef[StatusReply[_]])                                   extends Command
+  case class GetStatus(replyTo: ActorRef[StatusReply[_]]) extends Command
 
-  case class GetLastBlockIndex(replyTo: ActorRef[StatusReply[_]])                           extends Command
+  case class GetLastBlockIndex(replyTo: ActorRef[StatusReply[_]]) extends Command
 
-  case class GetLastBlockHash(replyTo: ActorRef[StatusReply[_]])                            extends Command
+  case class GetLastBlockHash(replyTo: ActorRef[StatusReply[_]]) extends Command
 }
 class Node(
     context: ActorContext[Node.Command],
     blockchain: ActorRef[Blockchain.Command[_]],
     miner: ActorRef[Miner.Command],
     broker: ActorRef[Broker.Command]
-) extends AbstractBehavior[Node.Command](context) {
+) extends AbstractBehavior[Node.Command](context)
+    with Loggable {
   private val duration                                              = 10.seconds
   implicit val timeout: Timeout                                     = Timeout(duration)
   implicit val system: ActorSystem[Nothing]                         = context.system
@@ -103,18 +104,17 @@ class Node(
           replyTo ! statusReply
       }
       Behaviors.same
-    case Node.Mine(solution, replyTo)             =>
+    case Node.StartMining                         =>
       blockchain.askWithStatus(Blockchain.GetLastHash).onComplete {
         case Failure(exception) =>
-          replyTo ! StatusReply.error(exception)
+          throw exception
         case Success(hash)      =>
-          miner.ask(Miner.Mine(hash, solution, _)).onComplete {
+          miner.askWithStatus(Miner.Mine(hash, _)).onComplete {
             case Failure(exception) =>
-              replyTo ! StatusReply.error(exception)
-            case Success(value)     =>
-
+              throw exception
+            case Success(mined)     =>
+              logger.info(s"PoW:$mined")
           }
-
       }
       Behaviors.same
     case Node.GetLastBlockIndex(replyTo)          =>
