@@ -43,7 +43,7 @@ class Broker(context: ActorContext[Broker.Command]) extends AbstractBehavior[Bro
         replyTo ! StatusReply.Ack
         Behaviors.same
       case Broker.GetTransactions(replyTo)             =>
-        logger.info(s"Pending: ${pending.size} "+pending.mkString(" | "))
+        logger.info(s"Pending: ${pending.size} - "+pending.mkString(" | "))
         replyTo ! StatusReply.success(pending.toList)
         Behaviors.same
       case Broker.Clear(replyTo)                       =>

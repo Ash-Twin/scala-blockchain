@@ -22,17 +22,17 @@ object ChainServer extends Loggable {
         implicit val ec = ctx.executionContext
         val injector    = Guice.createInjector(ActorModule(ctx))
         injector.instance[ChainServer].start() onComplete {
-          case Success(value)     =>
+          case Success(_)     =>
             logger.info("binding future complete")
           case Failure(exception) =>
-            logger.info(exception.getMessage)
+            ctx.system.terminate()
         }
         Behaviors.receiveMessage { case Done => Behaviors.stopped }
       },
       "Chain-Server",
       ConfigSource.default.config() match {
-        case Left(value)  => throw new RuntimeException(value.head.description)
-        case Right(value) => value
+        case Left(loadError)  => throw new RuntimeException(loadError.toList.mkString("\n"))
+        case Right(config) => config
       }
     )
 
