@@ -5,6 +5,7 @@ import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior, SupervisorStrategy}
 import akka.pattern.StatusReply
 import me.james.chain.model.Transaction
+import me.james.chain.utils.Loggable
 
 import scala.collection.mutable
 
@@ -19,25 +20,28 @@ object Broker {
     })
     .onFailure(SupervisorStrategy.restart)
 }
-class Broker(context: ActorContext[Broker.Command]) extends AbstractBehavior[Broker.Command](context) {
+class Broker(context: ActorContext[Broker.Command]) extends AbstractBehavior[Broker.Command](context) with Loggable {
 
   private val pending: mutable.ListBuffer[Transaction] = mutable.ListBuffer.empty
 
-  override def onMessage(msg: Broker.Command): Behavior[Broker.Command] = msg match {
-    case Broker.AddTransaction(transaction, replyTo) =>
-      pending += transaction
-      replyTo ! StatusReply.Ack
-      Behaviors.same
-    case Broker.GetTransactions(replyTo)             =>
-      replyTo ! StatusReply.success(pending.toList)
-      Behaviors.same
-    case Broker.Clear(replyTo)                       =>
-      val size = pending.size
-      pending.clear()
-      replyTo ! StatusReply.success(size)
-      Behaviors.same
-    case _                                           =>
-      Behaviors.unhandled
+  override def onMessage(msg: Broker.Command): Behavior[Broker.Command] = {
+    logger.info(msg.getClass.getName)
+    msg match {
+      case Broker.AddTransaction(transaction, replyTo) =>
+        pending += transaction
+        replyTo ! StatusReply.Ack
+        Behaviors.same
+      case Broker.GetTransactions(replyTo)             =>
+        replyTo ! StatusReply.success(pending.toList)
+        Behaviors.same
+      case Broker.Clear(replyTo)                       =>
+        val size = pending.size
+        pending.clear()
+        replyTo ! StatusReply.success(size)
+        Behaviors.same
+      case _                                           =>
+        Behaviors.unhandled
+    }
   }
 
 }
