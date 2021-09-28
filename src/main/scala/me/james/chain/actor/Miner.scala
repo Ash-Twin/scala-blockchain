@@ -14,7 +14,7 @@ import scala.util.chaining._
 object Miner extends Loggable {
 
   def beginMining(hash: String): StatusReply[Long] = {
-    logger.info("Begin mining")
+    logger.info("Begin mining...")
     val eventualLong = Future {
       PoWUtil.pow(hash)
     }
@@ -25,9 +25,9 @@ object Miner extends Loggable {
     .supervise(
       Behaviors.withMdc(
         staticMdc = Map.empty,
-        (msg: Command) => Map(this.getClass.getSimpleName -> msg.getClass.getSimpleName)
+        (msg: Miner.Command) => Map(" <" -> s" ${msg.getClass.getSimpleName}")
       ) {
-        Behaviors.setup[Command] { ctx =>
+        Behaviors.setup[Miner.Command] { ctx =>
           new Miner(ctx)
         }
       }

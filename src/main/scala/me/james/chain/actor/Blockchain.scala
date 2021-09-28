@@ -13,7 +13,13 @@ object Blockchain {
   def apply(config: AppConfig, actorSys: ActorSystem[_]): Behavior[Blockchain.Command[_]] =
     Behaviors
       .supervise(
-        Blockchain.counter(PersistenceId.ofUniqueId(config.persistenceId))
+        Behaviors.withMdc[Blockchain.Command[_]](
+          Map.empty[String,String],
+          (msg: Blockchain.Command[_]) => Map(" <" -> s" ${msg.getClass.getSimpleName}")
+        ) {
+
+          Blockchain.counter(PersistenceId.ofUniqueId(config.persistenceId))
+        }
       )
       .onFailure(SupervisorStrategy.restart)
 
@@ -42,11 +48,11 @@ object Blockchain {
   case class AddBlock(transactions: List[Transaction], proof: Long, replyTo: ActorRef[StatusReply[Done]])
       extends Command[Done]
 
-  case class GetChain(replyTo: ActorRef[Chain])                  extends Command[Chain]
+  case class GetChain(replyTo: ActorRef[Chain]) extends Command[Chain]
 
   case class GetLastHash(replyTo: ActorRef[StatusReply[String]]) extends Command[String]
 
-  case class GetLastIndex(replyTo: ActorRef[StatusReply[Int]])   extends Command[Int]
+  case class GetLastIndex(replyTo: ActorRef[StatusReply[Int]]) extends Command[Int]
 
   case class State(chain: Chain)
 }

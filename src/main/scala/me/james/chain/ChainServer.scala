@@ -12,8 +12,8 @@ import me.james.chain.utils.Loggable
 import net.codingwell.scalaguice.InjectorExtensions.ScalaInjector
 import pureconfig.ConfigSource
 
-import scala.concurrent.Future
-import scala.util.{Failure, Success}
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.DurationInt
 
 object ChainServer extends Loggable {
   def main(args: Array[String]): Unit =
@@ -21,27 +21,33 @@ object ChainServer extends Loggable {
       Behaviors.setup[Done] { ctx =>
         implicit val ec = ctx.executionContext
         val injector    = Guice.createInjector(ActorModule(ctx))
-        injector.instance[ChainServer].start() onComplete {
-          case Success(_)     =>
-            logger.info("binding future complete")
-          case Failure(exception) =>
-            ctx.system.terminate()
-        }
+        injector.instance[ChainServer].start()
         Behaviors.receiveMessage { case Done => Behaviors.stopped }
       },
       "Chain-Server",
       ConfigSource.default.config() match {
-        case Left(loadError)  => throw new RuntimeException(loadError.toList.mkString("\n"))
-        case Right(config) => config
+        case Left(loadError) => throw new RuntimeException(loadError.toList.mkString("\n"))
+        case Right(config)   => config
       }
     )
 
 }
-class ChainServer @Inject() (injector: ScalaInjector) {
-  private implicit val system: ActorSystem[_] = injector.instance[ActorSystem[_]]
-  val tApi = injector.instance[TransactionApi]
-  private val appConfig: AppConfig            = injector.instance[AppConfig]
-
-  def start(): Future[Http.ServerBinding] =
-    Http().newServerAt(appConfig.host, appConfig.port).bind(tApi.routes)
+class ChainServer @Inject() (injector: ScalaInjector) extends Loggable {
+  implicit val system: ActorSystem[_]        = injector.instance[ActorSystem[_]]
+  implicit val ec: ExecutionContext          = system.executionContext
+  private val transactionApi: TransactionApi = injector.instance[TransactionApi]
+  private val appConfig: AppConfig           = injector.instance[AppConfig]
+  private val HOST: String                   = appConfig.host
+  private val PORT: Int                      = appConfig.port
+  def start(): Unit = {
+    logger.info(s"Blockchain Server initializing")
+    Http()
+      .newServerAt(HOST, PORT)
+      .bind(transactionApi.routes)
+      .andThen { active =>
+        logger.info(s"Blockchain Server serving at https://$HOST:$PORT")
+        active
+      }
+      .map(_.addToCoordinatedShutdown(hardTerminationDeadline = 10.seconds))
+  }
 }

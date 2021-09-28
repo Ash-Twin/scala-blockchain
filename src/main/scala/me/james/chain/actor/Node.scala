@@ -9,6 +9,7 @@ import akka.util.Timeout
 import me.james.chain.model.Transaction
 import me.james.chain.utils.{Loggable, PoWUtil}
 
+import scala.collection.immutable
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success}
@@ -19,9 +20,14 @@ object Node       {
       miner: ActorRef[Miner.Command],
       broker: ActorRef[Broker.Command]
   ): Behavior[Node.Command] = Behaviors
-    .supervise(Behaviors.setup[Command] { ctx =>
-      new Node(ctx, blockchain, miner, broker)
-    })
+    .supervise(
+      Behaviors
+        .withMdc[Node.Command](Map.empty[String,String], (msg: Node.Command) => Map(" <" -> s" ${msg.getClass.getSimpleName}")) {
+          Behaviors.setup[Node.Command] { ctx =>
+            new Node(ctx, blockchain, miner, broker)
+          }
+        }
+    )
     .onFailure(SupervisorStrategy.restart)
 
   sealed trait Command
@@ -105,6 +111,7 @@ class Node(
       }
       Behaviors.same
     case Node.StartMining                         =>
+      logger.info("Asking miner...")
       blockchain.askWithStatus(Blockchain.GetLastHash).onComplete {
         case Failure(exception) =>
           throw exception
