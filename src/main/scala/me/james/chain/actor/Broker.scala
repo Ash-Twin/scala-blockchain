@@ -10,15 +10,19 @@ import me.james.chain.utils.Loggable
 import scala.collection.mutable
 
 object Broker {
-  sealed trait Command
-  case class AddTransaction(transaction: Transaction, replyTo: ActorRef[StatusReply[Done]]) extends Command
-  case class GetTransactions(replyTo: ActorRef[StatusReply[List[Transaction]]])             extends Command
-  case class Clear(replyTo: ActorRef[StatusReply[Int]])                                     extends Command
   def apply(): Behavior[Broker.Command] = Behaviors
     .supervise(Behaviors.setup[Command] { ctx =>
       new Broker(ctx)
     })
     .onFailure(SupervisorStrategy.restart)
+
+  sealed trait Command
+
+  case class AddTransaction(transaction: Transaction, replyTo: ActorRef[StatusReply[Done]]) extends Command
+
+  case class GetTransactions(replyTo: ActorRef[StatusReply[List[Transaction]]])             extends Command
+
+  case class Clear(replyTo: ActorRef[StatusReply[Int]])                                     extends Command
 }
 class Broker(context: ActorContext[Broker.Command]) extends AbstractBehavior[Broker.Command](context) with Loggable {
 

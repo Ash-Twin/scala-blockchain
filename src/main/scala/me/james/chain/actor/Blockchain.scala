@@ -4,24 +4,20 @@ import akka.Done
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior, SupervisorStrategy}
 import akka.pattern.StatusReply
-import akka.persistence.jdbc.state.scaladsl.JdbcDurableStateStore
-import akka.persistence.state.DurableStateStoreRegistry
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.state.scaladsl.{DurableStateBehavior, Effect}
 import me.james.chain.config.AppConfig
 import me.james.chain.model.{Chain, ChainLink, EmptyChain, Transaction}
 
 object Blockchain {
-  sealed trait Command[ReplyMessage]
-  case class AddBlock(transactions: List[Transaction], proof: Long, replyTo: ActorRef[StatusReply[Done]])
-      extends Command[Done]
-  case class GetChain(replyTo: ActorRef[Chain])                  extends Command[Chain]
-  case class GetLastHash(replyTo: ActorRef[StatusReply[String]]) extends Command[String]
-  case class GetLastIndex(replyTo: ActorRef[StatusReply[Int]])   extends Command[Int]
+  def apply(config: AppConfig, actorSys: ActorSystem[_]): Behavior[Blockchain.Command[_]] =
+    Behaviors
+      .supervise(
+        Blockchain.counter(PersistenceId.ofUniqueId(config.persistenceId))
+      )
+      .onFailure(SupervisorStrategy.restart)
 
-  case class State(chain: Chain)
-  def counter(persistenceId: PersistenceId): DurableStateBehavior[Blockchain.Command[_], State] = {
-
+  def counter(persistenceId: PersistenceId): DurableStateBehavior[Blockchain.Command[_], State] =
     DurableStateBehavior.withEnforcedReplies[Blockchain.Command[_], State](
       persistenceId,
       emptyState = State(EmptyChain),
@@ -40,12 +36,17 @@ object Blockchain {
         }
       }
     )
-  }
 
-  def apply(config: AppConfig,actorSys:ActorSystem[_]): Behavior[Blockchain.Command[_]] =
-    Behaviors
-      .supervise(
-        Blockchain.counter(PersistenceId.ofUniqueId(config.persistenceId))
-      )
-      .onFailure(SupervisorStrategy.restart)
+  sealed trait Command[ReplyMessage]
+
+  case class AddBlock(transactions: List[Transaction], proof: Long, replyTo: ActorRef[StatusReply[Done]])
+      extends Command[Done]
+
+  case class GetChain(replyTo: ActorRef[Chain])                  extends Command[Chain]
+
+  case class GetLastHash(replyTo: ActorRef[StatusReply[String]]) extends Command[String]
+
+  case class GetLastIndex(replyTo: ActorRef[StatusReply[Int]])   extends Command[Int]
+
+  case class State(chain: Chain)
 }

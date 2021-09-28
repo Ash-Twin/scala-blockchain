@@ -14,16 +14,6 @@ import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success}
 
 object Node {
-  sealed trait Command
-  case class AddTransaction(transaction: Transaction, replyTo: ActorRef[StatusReply[Done]]) extends Command
-  case class CheckPowSolution(solution: Long, replyTo: ActorRef[StatusReply[_]])         extends Command
-  case class AddBlock(proof: Long, replyTo: ActorRef[StatusReply[_]])                    extends Command
-  case class GetTransactions(replyTo: ActorRef[StatusReply[List[Transaction]]])                          extends Command
-  case class Mine(solution: Long, replyTo: ActorRef[StatusReply[_]])                     extends Command
-  case class StopMining(replyTo: ActorRef[StatusReply[_]])                               extends Command
-  case class GetStatus(replyTo: ActorRef[StatusReply[_]])                                extends Command
-  case class GetLastBlockIndex(replyTo: ActorRef[StatusReply[_]])                        extends Command
-  case class GetLastBlockHash(replyTo: ActorRef[StatusReply[_]])                         extends Command
   def apply(
       blockchain: ActorRef[Blockchain.Command[_]],
       miner: ActorRef[Miner.Command],
@@ -33,6 +23,26 @@ object Node {
       new Node(ctx, blockchain, miner, broker)
     })
     .onFailure(SupervisorStrategy.restart)
+
+  sealed trait Command
+
+  case class AddTransaction(transaction: Transaction, replyTo: ActorRef[StatusReply[Done]]) extends Command
+
+  case class CheckPowSolution(solution: Long, replyTo: ActorRef[StatusReply[_]])            extends Command
+
+  case class AddBlock(proof: Long, replyTo: ActorRef[StatusReply[_]])                       extends Command
+
+  case class GetTransactions(replyTo: ActorRef[StatusReply[List[Transaction]]])             extends Command
+
+  case class Mine(solution: Long, replyTo: ActorRef[StatusReply[_]])                        extends Command
+
+  case class StopMining(replyTo: ActorRef[StatusReply[_]])                                  extends Command
+
+  case class GetStatus(replyTo: ActorRef[StatusReply[_]])                                   extends Command
+
+  case class GetLastBlockIndex(replyTo: ActorRef[StatusReply[_]])                           extends Command
+
+  case class GetLastBlockHash(replyTo: ActorRef[StatusReply[_]])                            extends Command
 }
 class Node(
     context: ActorContext[Node.Command],

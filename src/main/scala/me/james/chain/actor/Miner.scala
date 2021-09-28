@@ -12,9 +12,6 @@ import scala.concurrent.{Await, Future}
 import scala.util.chaining._
 
 object Miner extends Loggable {
-  sealed trait Command
-  case class Mine(hash: String, proof: Long, replyTo: ActorRef[StatusReply[_]]) extends Command
-
   def validate(hash: String, proof: Long): (Boolean, String) = {
     val isValid = PoWUtil.validProof(hash, proof)
     if (isValid) {
@@ -24,6 +21,7 @@ object Miner extends Loggable {
     }
     isValid -> hash
   }
+
   def beginMining(tupled: (Boolean, String)): StatusReply[_] = {
     val (isValid, hash) = tupled
     if (isValid) {
@@ -36,11 +34,16 @@ object Miner extends Loggable {
       StatusReply.Error("Cancel Mining")
     }
   }
+
   def apply(): Behavior[Miner.Command] = Behaviors
     .supervise(Behaviors.setup[Command] { ctx =>
       new Miner(ctx)
     })
     .onFailure(SupervisorStrategy.restart)
+
+  sealed trait Command
+
+  case class Mine(hash: String, proof: Long, replyTo: ActorRef[StatusReply[_]]) extends Command
 
 }
 class Miner(context: ActorContext[Miner.Command]) extends AbstractBehavior[Miner.Command](context) {

@@ -39,9 +39,8 @@ object ChainServer extends Loggable {
 }
 class ChainServer @Inject() (injector: ScalaInjector) {
   private implicit val system: ActorSystem[_] = injector.instance[ActorSystem[_]]
-  private val appConfig: AppConfig            = injector.instance[AppConfig]
-
   val tApi = injector.instance[TransactionApi]
+  private val appConfig: AppConfig            = injector.instance[AppConfig]
 
   def start(): Future[Http.ServerBinding] =
     Http().newServerAt(appConfig.host, appConfig.port).bind(tApi.routes)

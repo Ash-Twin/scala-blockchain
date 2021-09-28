@@ -55,6 +55,12 @@ trait JsonSupport extends CirceEncoders {
       e(_).noSpaces
     }
 
+  def statusWithdata(code: StatusCode, data: String = "") = {
+    def strict: HttpEntity.Strict =
+      HttpEntity(ContentTypes.`application/json`, s"""{"code":${code.intValue()},"data":$data}""")
+    complete(code, strict)
+  }
+
   /** To limit what data can be serialized to the client, only classes of type `T` for which an implicit
     * `CanBeSerialized[T]` value is in scope will be allowed. You only need to provide an implicit for the base value,
     * any containers like `List` or `Option` will be automatically supported.
@@ -66,11 +72,5 @@ trait JsonSupport extends CirceEncoders {
     implicit def listCanBeSerialized[T](implicit cbs: CanBeSerialized[T]): CanBeSerialized[List[T]]     = null
     implicit def setCanBeSerialized[T](implicit cbs: CanBeSerialized[T]): CanBeSerialized[Set[T]]       = null
     implicit def optionCanBeSerialized[T](implicit cbs: CanBeSerialized[T]): CanBeSerialized[Option[T]] = null
-  }
-
-  def statusWithdata(code: StatusCode, data: String = "") = {
-    def strict: HttpEntity.Strict =
-      HttpEntity(ContentTypes.`application/json`, s"""{"code":${code.intValue()},"data":$data}""")
-    complete(code, strict)
   }
 }

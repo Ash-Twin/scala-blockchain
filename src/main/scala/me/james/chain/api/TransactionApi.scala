@@ -5,7 +5,6 @@ import akka.actor.typed.scaladsl.AskPattern.{Askable, schedulerFromActorSystem}
 import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
-import akka.util.Timeout
 import com.google.inject.Inject
 import io.circe.generic.auto._
 import io.circe.syntax._

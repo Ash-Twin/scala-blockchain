@@ -1,7 +1,7 @@
 package me.james.chain.module
 
-import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.actor.typed.scaladsl.ActorContext
+import akka.actor.typed.{ActorRef, ActorSystem}
 import com.google.inject.{AbstractModule, Provides, Singleton}
 import me.james.chain.actor.{Blockchain, Broker, Miner, Node}
 import me.james.chain.config.AppConfig
@@ -16,14 +16,6 @@ case class ActorModule(actorContext: ActorContext[_]) extends AbstractModule wit
 
   @Provides
   @Singleton
-  def config: AppConfig = ConfigSource.file("src/main/resources/application.conf").loadOrThrow[AppConfig]
-
-  @Provides
-  @Singleton
-  def system: ActorSystem[_] = actorContext.system
-
-  @Provides
-  @Singleton
   def minerActor(actorContext: ActorContext[_]): ActorRef[Miner.Command] = actorContext.spawn(Miner.apply(), "Miner")
 
   @Provides
@@ -34,7 +26,15 @@ case class ActorModule(actorContext: ActorContext[_]) extends AbstractModule wit
   @Provides
   @Singleton
   def blockChain(actorContext: ActorContext[_]): ActorRef[Blockchain.Command[_]] =
-    actorContext.spawn(Blockchain.apply(config,system), "BlockChain")
+    actorContext.spawn(Blockchain.apply(config, system), "BlockChain")
+
+  @Provides
+  @Singleton
+  def config: AppConfig = ConfigSource.file("src/main/resources/application.conf").loadOrThrow[AppConfig]
+
+  @Provides
+  @Singleton
+  def system: ActorSystem[_] = actorContext.system
 
   @Provides
   @Singleton
