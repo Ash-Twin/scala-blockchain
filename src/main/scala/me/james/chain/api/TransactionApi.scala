@@ -10,7 +10,7 @@ import com.google.inject.Inject
 import io.circe.generic.auto._
 import io.circe.syntax._
 import me.james.chain.actor.Node
-import me.james.chain.model.Transaction
+import me.james.chain.model.{ChainLink, EmptyChain, Transaction}
 import me.james.chain.utils.JsonSupport
 import net.codingwell.scalaguice.InjectorExtensions.ScalaInjector
 
@@ -41,6 +41,17 @@ class TransactionApi @Inject() (injector: ScalaInjector) extends JsonSupport {
         get{
           node ! Node.StartMining
           statusWithdata(StatusCodes.OK,"start mining")
+        }
+      }~
+      path("status"){
+        get{
+          val future = node.askWithStatus(Node.GetStatus)
+          onSuccess(future) {
+            case chain:ChainLink=>
+              statusWithdata(StatusCodes.OK,chain.asJson.noSpaces)
+            case EmptyChain =>
+              statusWithdata(StatusCodes.OK)
+          }
         }
       }
 }

@@ -6,10 +6,9 @@ import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior, SupervisorStrategy}
 import akka.pattern.StatusReply
 import akka.util.Timeout
-import me.james.chain.model.Transaction
+import me.james.chain.model.{Chain, Transaction}
 import me.james.chain.utils.{Loggable, PoWUtil}
 
-import scala.collection.immutable
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success}
@@ -22,7 +21,10 @@ object Node       {
   ): Behavior[Node.Command] = Behaviors
     .supervise(
       Behaviors
-        .withMdc[Node.Command](Map.empty[String,String], (msg: Node.Command) => Map(" <" -> s" ${msg.getClass.getSimpleName}")) {
+        .withMdc[Node.Command](
+          Map.empty[String, String],
+          (msg: Node.Command) => Map(" <" -> s" ${msg.getClass.getSimpleName}")
+        ) {
           Behaviors.setup[Node.Command] { ctx =>
             new Node(ctx, blockchain, miner, broker)
           }
@@ -44,7 +46,7 @@ object Node       {
 
   case class StopMining(replyTo: ActorRef[StatusReply[_]]) extends Command
 
-  case class GetStatus(replyTo: ActorRef[StatusReply[_]]) extends Command
+  case class GetStatus(replyTo: ActorRef[StatusReply[Chain]]) extends Command
 
   case class GetLastBlockIndex(replyTo: ActorRef[StatusReply[_]]) extends Command
 
@@ -117,10 +119,22 @@ class Node(
           throw exception
         case Success(hash)      =>
           miner.askWithStatus(Miner.Mine(hash, _)).onComplete {
-            case Failure(exception) =>
+            case Failure(exception)  =>
               throw exception
-            case Success(mined)     =>
-              logger.info(s"PoW:$mined")
+            case Success(minedProof) =>
+              logger.info(s"PoW:$minedProof")
+              broker ask (Broker.AddTransaction(Transaction("ScalaChain", "node-0", 100), _))
+              broker.askWithStatus(Broker.GetTransactions).onComplete {
+                case Failure(exception)    =>
+                  logger.info(exception.getMessage)
+                case Success(transactions) =>
+                  blockchain.askWithStatus(Blockchain.AddBlock(transactions, minedProof, _)) onComplete {
+                    case Success(Done)      =>
+                      logger.info("Done mining")
+                    case Failure(exception) =>
+                      logger.info(exception.getMessage)
+                  }
+              }
           }
       }
       Behaviors.same
@@ -138,6 +152,15 @@ class Node(
           replyTo ! StatusReply.error(exception)
         case Success(statusReply) =>
           replyTo ! statusReply
+      }
+      Behaviors.same
+    case Node.GetStatus(replyTo)                  =>
+      blockchain.ask(Blockchain.GetChain).onComplete {
+        case Failure(exception) =>
+          replyTo ! StatusReply.error(exception)
+        case Success(chain)     =>
+          logger.info(chain.getValue.toString)
+          replyTo ! chain
       }
       Behaviors.same
   }

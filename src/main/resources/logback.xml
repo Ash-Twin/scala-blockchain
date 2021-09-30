@@ -5,9 +5,6 @@
         <pattern>[%date{ISO8601}] [%level] [%thread] [%logger%mdc] - %msg%n</pattern>
     </encoder>
 </appender>
-
-<logger name="deng" level="DEBUG"/>
-
 <root level="INFO">
     <appender-ref ref="STDOUT" />
 </root>

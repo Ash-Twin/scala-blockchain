@@ -9,6 +9,8 @@ import akka.persistence.typed.state.scaladsl.{DurableStateBehavior, Effect}
 import me.james.chain.config.AppConfig
 import me.james.chain.model.{Chain, ChainLink, EmptyChain, Transaction}
 
+import java.util.UUID
+
 object Blockchain {
   def apply(config: AppConfig, actorSys: ActorSystem[_]): Behavior[Blockchain.Command[_]] =
     Behaviors
@@ -17,8 +19,7 @@ object Blockchain {
           Map.empty[String,String],
           (msg: Blockchain.Command[_]) => Map(" <" -> s" ${msg.getClass.getSimpleName}")
         ) {
-
-          Blockchain.counter(PersistenceId.ofUniqueId(config.persistenceId))
+          Blockchain.counter(PersistenceId.ofUniqueId(config.persistenceId+UUID.randomUUID()))
         }
       )
       .onFailure(SupervisorStrategy.restart)
@@ -34,7 +35,7 @@ object Blockchain {
               .persist(State(ChainLink(state.chain.index + 1, proof, transactions) :: state.chain))
               .thenReply(replyTo)(_ => StatusReply.Ack)
           case GetChain(replyTo)                      =>
-            Effect.reply(replyTo)(state.chain)
+            Effect.reply(replyTo)(StatusReply.success(state.chain))
           case GetLastHash(replyTo)                   =>
             Effect.reply(replyTo)(StatusReply.success(state.chain.hash))
           case GetLastIndex(replyTo)                  =>
@@ -48,7 +49,7 @@ object Blockchain {
   case class AddBlock(transactions: List[Transaction], proof: Long, replyTo: ActorRef[StatusReply[Done]])
       extends Command[Done]
 
-  case class GetChain(replyTo: ActorRef[Chain]) extends Command[Chain]
+  case class GetChain(replyTo: ActorRef[StatusReply[Chain]]) extends Command[Chain]
 
   case class GetLastHash(replyTo: ActorRef[StatusReply[String]]) extends Command[String]
 
