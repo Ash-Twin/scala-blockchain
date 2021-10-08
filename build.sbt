@@ -11,6 +11,7 @@ val SlickVersion      = "3.3.3"
 libraryDependencies ++= Seq(
   "com.typesafe.akka"  %% "akka-actor-typed"         % AkkaVersion,
   "com.typesafe.akka"  %% "akka-http"                % AkkaHttpVersion,
+  "com.typesafe.akka" %% "akka-serialization-jackson" % AkkaVersion,
   "com.typesafe.akka"  %% "akka-persistence-typed"   % AkkaVersion,
   "com.lightbend.akka" %% "akka-persistence-jdbc"    % "5.0.4",
   "com.typesafe.akka"  %% "akka-persistence-query"   % AkkaVersion,

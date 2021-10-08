@@ -44,7 +44,7 @@ object Blockchain {
       }
     )
 
-  sealed trait Command[ReplyMessage]
+  sealed trait Command[ReplyMessage] extends CborSerializable
 
   case class AddBlock(transactions: List[Transaction], proof: Long, replyTo: ActorRef[StatusReply[Done]])
       extends Command[Done]
