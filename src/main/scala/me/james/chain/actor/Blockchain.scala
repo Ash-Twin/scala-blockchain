@@ -55,5 +55,5 @@ object Blockchain {
 
   case class GetLastIndex(replyTo: ActorRef[StatusReply[Int]]) extends Command[Int]
 
-  case class State(chain: Chain)
+  case class State(chain: Chain) extends CborSerializable
 }

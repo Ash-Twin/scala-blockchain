@@ -24,7 +24,7 @@ object Miner extends Loggable {
   def apply(): Behavior[Miner.Command] = Behaviors
     .supervise(
       Behaviors.withMdc(
-        staticMdc = Map("ee"->"er"),
+        staticMdc = Map.empty,
         (msg: Miner.Command) => Map(" <" -> s" ${msg.getClass.getSimpleName}")
       ) {
         Behaviors.setup[Miner.Command] { ctx =>

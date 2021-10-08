@@ -29,7 +29,7 @@ object Broker {
 
   case class GetTransactions(replyTo: ActorRef[StatusReply[List[Transaction]]]) extends Command
 
-  case class Clear(replyTo: ActorRef[StatusReply[Int]]) extends Command
+  case object Clear extends Command
 }
 class Broker(context: ActorContext[Broker.Command]) extends AbstractBehavior[Broker.Command](context) with Loggable {
 
@@ -46,11 +46,11 @@ class Broker(context: ActorContext[Broker.Command]) extends AbstractBehavior[Bro
         logger.info(s"Pending: ${pending.size} - "+pending.mkString(" | "))
         replyTo ! StatusReply.success(pending.toList)
         Behaviors.same
-      case Broker.Clear(replyTo)                       =>
+      case Broker.Clear                       =>
         val size = pending.size
         pending.clear()
         logger.info(s"Clear $size pending transactions")
-        replyTo ! StatusReply.success(size)
+
         Behaviors.same
       case _                                           =>
         Behaviors.unhandled

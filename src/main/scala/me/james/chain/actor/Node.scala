@@ -123,13 +123,13 @@ class Node(
               throw exception
             case Success(minedProof) =>
               logger.info(s"PoW:$minedProof")
-              broker ask (Broker.AddTransaction(Transaction("ScalaChain", "node-0", 100), _))
               broker.askWithStatus(Broker.GetTransactions).onComplete {
                 case Failure(exception)    =>
                   logger.info(exception.getMessage)
                 case Success(transactions) =>
                   blockchain.askWithStatus(Blockchain.AddBlock(transactions, minedProof, _)) onComplete {
                     case Success(Done)      =>
+                      broker ! Broker.Clear
                       logger.info("Done mining")
                     case Failure(exception) =>
                       logger.info(exception.getMessage)
