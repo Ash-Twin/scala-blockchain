@@ -49,6 +49,14 @@ case class ChainLink(
 ) extends Chain {
   override val hash: String = CryptoUtil.sha256Hash(this.asJson.noSpaces)
 }
+
+/**
+ * ADT with trait and case object
+ *
+ * It’s common in Scala to use a sealed trait and case objects to represent enums. If the values are case classes the @JsonSubTypes annotation as described above works, but if the values are case objects it will not. The annotation requires a Class and there is no way to define that in an annotation for a case object.
+ * The easiest workaround is to define the case objects as case class without any field.
+ * Alternatively, you can define an intermediate trait for the case object and a custom deserializer for it. The example below builds on the previous Animal sample by adding a fictitious, single instance, new animal, an Unicorn.
+ */
 @JsonDeserialize(using = classOf[EmptyChainDeserializer])
 sealed trait EmptyChain extends Chain
 @JsonTypeName("empty_chain")
@@ -59,6 +67,7 @@ case object EmptyChain extends EmptyChain {
   override val proof: Long               = 100L
   override val timestamp: LocalDateTime  = LocalDateTime.now()
 }
+
 class EmptyChainDeserializer extends StdDeserializer[EmptyChain](EmptyChain.getClass){
   override def deserialize(p: JsonParser, ctxt: DeserializationContext): EmptyChain = EmptyChain
 }
