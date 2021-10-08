@@ -5,7 +5,7 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior, SupervisorStrategy}
 import akka.pattern.StatusReply
 import akka.persistence.typed.PersistenceId
-import akka.persistence.typed.state.scaladsl.{DurableStateBehavior, Effect}
+import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior}
 import me.james.chain.config.AppConfig
 import me.james.chain.model.{Chain, ChainLink, EmptyChain, Transaction}
 
@@ -19,20 +19,20 @@ object Blockchain {
           Map.empty[String,String],
           (msg: Blockchain.Command[_]) => Map(" <" -> s" ${msg.getClass.getSimpleName}")
         ) {
-          Blockchain.counter(PersistenceId.ofUniqueId(config.persistenceId+UUID.randomUUID()))
+          Blockchain.counter(PersistenceId.ofUniqueId(config.persistenceId))
         }
       )
       .onFailure(SupervisorStrategy.restart)
 
-  def counter(persistenceId: PersistenceId): DurableStateBehavior[Blockchain.Command[_], State] =
-    DurableStateBehavior.withEnforcedReplies[Blockchain.Command[_], State](
+  def counter(persistenceId: PersistenceId): EventSourcedBehavior[Blockchain.Command[_],Blockchain.Event, State] =
+    EventSourcedBehavior.withEnforcedReplies[Blockchain.Command[_], Blockchain.Event,State](
       persistenceId,
       emptyState = State(EmptyChain),
       commandHandler = (state, command) => {
         command match {
           case AddBlock(transactions, proof, replyTo) =>
             Effect
-              .persist(State(ChainLink(state.chain.index + 1, proof, transactions) :: state.chain))
+              .persist(BlockAdded(ChainLink(state.chain.index + 1, proof, transactions) :: state.chain))
               .thenReply(replyTo)(_ => StatusReply.Ack)
           case GetChain(replyTo)                      =>
             Effect.reply(replyTo)(StatusReply.success(state.chain))
@@ -41,7 +41,8 @@ object Blockchain {
           case GetLastIndex(replyTo)                  =>
             Effect.reply(replyTo)(StatusReply.success(state.chain.index))
         }
-      }
+      },
+      eventHandler = (state, event) => state.applyEvent(event)
     )
 
   sealed trait Command[ReplyMessage] extends CborSerializable
@@ -55,5 +56,13 @@ object Blockchain {
 
   case class GetLastIndex(replyTo: ActorRef[StatusReply[Int]]) extends Command[Int]
 
-  case class State(chain: Chain) extends CborSerializable
+  sealed trait Event extends CborSerializable
+
+  case class BlockAdded(chain:Chain) extends Event
+
+  case class State(chain: Chain) extends CborSerializable {
+    def applyEvent(event: Event): State = event match {
+      case BlockAdded(chain) => State(chain)
+    }
+  }
 }

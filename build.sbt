@@ -22,8 +22,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.slick" %% "slick"          % SlickVersion,
   "com.typesafe.slick" %% "slick-hikaricp" % SlickVersion
 )
-libraryDependencies ++= Seq("com.github.pureconfig" %% "pureconfig", "com.github.pureconfig" %% "pureconfig-akka")
-  .map(_ % pureConfigVersion)
+libraryDependencies += "com.github.pureconfig" %% "pureconfig"% pureConfigVersion
 
 libraryDependencies += "org.postgresql" % "postgresql" % "42.2.24"
 
