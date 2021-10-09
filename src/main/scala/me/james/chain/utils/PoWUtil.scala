@@ -16,6 +16,7 @@ object PoWUtil {
       }
     powHelper(lastHash, 0)
   }
+
   def validProof(lastHash: String, proof: Long): Boolean = {
     val guess     = (lastHash ++ proof.toString).asJson.noSpaces
     val guessHash = CryptoUtil.sha256Hash(guess)
